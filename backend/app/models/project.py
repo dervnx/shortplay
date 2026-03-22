@@ -21,6 +21,7 @@ class Project(BaseModel, TimestampMixin, SoftDeleteMixin):
 
     # Relationships
     episodes = relationship("Episode", back_populates="project", cascade="all, delete-orphan")
+    model_overrides = relationship("ProjectModelOverride", back_populates="project", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Project(id={self.id}, name={self.name})>"

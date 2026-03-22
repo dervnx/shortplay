@@ -30,5 +30,6 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/vite.config.ts ./
 EXPOSE 3000
-CMD ["npm", "run", "preview"]
+CMD ["node", "/app/node_modules/vite/bin/vite.js", "preview", "--host", "0.0.0.0", "--port", "3000"]

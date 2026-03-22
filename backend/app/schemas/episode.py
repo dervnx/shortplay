@@ -13,7 +13,7 @@ class EpisodeBase(BaseModel):
 class EpisodeCreate(EpisodeBase):
     """Schema for creating an episode."""
 
-    chapter_number: int = Field(..., ge=1)
+    chapter_number: Optional[int] = Field(None, ge=1)  # Optional, auto-assigned if not provided
 
 
 class EpisodeUpdate(BaseModel):

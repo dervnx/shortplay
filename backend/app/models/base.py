@@ -1,7 +1,9 @@
 from sqlalchemy import Column, Integer, SmallInteger, DateTime, func
-from sqlalchemy.ext.declarative import declarative_base
 
-BaseModel = declarative_base()
+# Import Base from app.core.database to ensure all models use the same declarative base
+from app.core.database import Base
+
+BaseModel = Base
 
 
 class TimestampMixin:

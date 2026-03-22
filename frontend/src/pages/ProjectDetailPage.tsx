@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Plus, Play, Users, MapPin, Clapperboard } from 'lucide-react'
+import { ArrowLeft, Plus, Play, Users, MapPin, Clapperboard, Bot, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { projectApi, episodeApi, characterApi, sceneApi } from '@/api'
+import { projectApi, episodeApi, characterApi, sceneApi, projectModelApi, modelApi, ProjectModelConfig } from '@/api'
 
 const STEPS = [
   { key: 0, label: '输入内容', icon: '📝' },
@@ -17,11 +17,18 @@ const STEPS = [
   { key: 6, label: '生成视频', icon: '🎥' },
 ]
 
+const MODEL_TYPES = [
+  { value: 1, label: '文本模型' },
+  { value: 2, label: '图像模型' },
+  { value: 3, label: '视频模型' },
+  { value: 4, label: '语音模型' },
+]
+
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'episodes' | 'characters' | 'scenes'>('episodes')
+  const [activeTab, setActiveTab] = useState<'episodes' | 'characters' | 'scenes' | 'models'>('episodes')
 
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
@@ -45,6 +52,41 @@ export function ProjectDetailPage() {
     queryKey: ['scenes', projectId],
     queryFn: () => sceneApi.list(Number(projectId)),
     select: (res) => res.data.data,
+  })
+
+  const { data: modelConfig, refetch: refetchModelConfig } = useQuery<ProjectModelConfig>({
+    queryKey: ['project-model-config', projectId],
+    queryFn: () => projectModelApi.getConfig(Number(projectId)).then(res => res.data.data),
+    enabled: activeTab === 'models',
+  })
+
+  const { data: allInstances } = useQuery({
+    queryKey: ['instances'],
+    queryFn: async () => {
+      const res = await modelApi.listInstances()
+      return res.data.data.items
+    },
+    enabled: activeTab === 'models',
+  })
+
+  const setModelOverrideMutation = useMutation({
+    mutationFn: (data: { model_instance_id: number; model_type: number }) =>
+      projectModelApi.setOverride(Number(projectId), data),
+    onSuccess: () => {
+      refetchModelConfig()
+      toast.success('模型配置已更新')
+    },
+    onError: () => toast.error('更新失败'),
+  })
+
+  const deleteModelOverrideMutation = useMutation({
+    mutationFn: (modelType: number) =>
+      projectModelApi.deleteOverride(Number(projectId), modelType),
+    onSuccess: () => {
+      refetchModelConfig()
+      toast.success('已恢复全局默认')
+    },
+    onError: () => toast.error('更新失败'),
   })
 
   const createEpisodeMutation = useMutation({
@@ -122,6 +164,7 @@ export function ProjectDetailPage() {
           { key: 'episodes', label: '章节', icon: Clapperboard, count: episodes?.total || 0 },
           { key: 'characters', label: '角色', icon: Users, count: characters?.total || 0 },
           { key: 'scenes', label: '场景', icon: MapPin, count: scenes?.total || 0 },
+          { key: 'models', label: '模型配置', icon: Bot, count: 0 },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -248,6 +291,71 @@ export function ProjectDetailPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'models' && (
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground mb-4">
+                设置本项目使用的模型。默认使用全局配置，您也可以为项目单独配置。
+              </p>
+              <div className="space-y-4">
+                {MODEL_TYPES.map((type) => {
+                  const overrideId = modelConfig?.overrides?.[type.value]
+                  const defaultInfo = modelConfig?.defaults?.[type.value]
+                  const instances = allInstances?.filter((i: any) => i.model_type === type.value) || []
+
+                  return (
+                    <div key={type.value} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{type.label}</p>
+                        {overrideId ? (
+                          <p className="text-sm text-muted-foreground">
+                            当前: {instances.find((i: any) => i.id === overrideId)?.instance_name || 'Unknown'}
+                          </p>
+                        ) : defaultInfo ? (
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Star className="w-3 h-3 text-yellow-500" />
+                            全局默认: {defaultInfo.instance_name}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">未配置</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="p-2 border rounded-md text-sm"
+                          value={overrideId || ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val) {
+                              setModelOverrideMutation.mutate({ model_instance_id: Number(val), model_type: type.value })
+                            }
+                          }}
+                        >
+                          <option value="">使用全局默认</option>
+                          {instances.map((inst: any) => (
+                            <option key={inst.id} value={inst.id}>{inst.instance_name}</option>
+                          ))}
+                        </select>
+                        {overrideId && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteModelOverrideMutation.mutate(type.value)}
+                          >
+                            恢复默认
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

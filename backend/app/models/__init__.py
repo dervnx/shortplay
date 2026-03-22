@@ -10,6 +10,8 @@ from app.models.video_task import VideoTask
 from app.models.model_definition import ModelDefinition
 from app.models.model_instance import ModelInstance
 from app.models.model_instance_default import ModelInstanceDefault
+from app.models.model_provider import ModelProvider
+from app.models.project_model_override import ProjectModelOverride
 from app.models.prompt_template import PromptTemplate
 from app.models.prompt_template_default import PromptTemplateDefault
 from app.models.style_template import StyleTemplate
@@ -28,6 +30,8 @@ __all__ = [
     "ModelDefinition",
     "ModelInstance",
     "ModelInstanceDefault",
+    "ModelProvider",
+    "ProjectModelOverride",
     "PromptTemplate",
     "PromptTemplateDefault",
     "StyleTemplate",

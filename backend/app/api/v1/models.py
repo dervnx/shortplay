@@ -44,11 +44,12 @@ def create_definition(
 def list_instances(
     model_type: Optional[int] = None,
     scene_code: Optional[int] = None,
+    provider_id: Optional[int] = None,
     db: Session = Depends(get_db_session),
 ):
     """List model instances with filters."""
     service = ModelService(db)
-    instances = service.list_instances(model_type=model_type, scene_code=scene_code)
+    instances = service.list_instances(model_type=model_type, scene_code=scene_code, provider_id=provider_id)
     return BaseResponse(data=ModelInstanceListResponse(
         items=[ModelInstanceResponse.model_validate(i) for i in instances],
         total=len(instances),
@@ -116,18 +117,19 @@ def set_default_instance(
 ):
     """Set default model instance for a type."""
     service = ModelService(db)
-    service.set_default_instance(model_type, instance_id)
+    service.set_default(instance_id, model_type)
     return BaseResponse(data={"model_type": model_type, "instance_id": instance_id})
 
 
-@router.get("/instances/{instance_id}/default", response_model=BaseResponse[ModelInstanceResponse])
-def get_default_instance(
+@router.get("/instances/default", response_model=BaseResponse[dict])
+def get_defaults_by_type(
     model_type: int = Query(...),
     db: Session = Depends(get_db_session),
 ):
     """Get default model instance for a type."""
     service = ModelService(db)
-    instance = service.get_default_instance(model_type)
+    defaults = service.get_defaults_by_type()
+    instance = defaults.get(model_type)
     if not instance:
-        raise HTTPException(status_code=404, detail="No default model instance found")
-    return BaseResponse(data=ModelInstanceResponse.model_validate(instance))
+        raise HTTPException(status_code=404, detail="No default model instance found for type")
+    return BaseResponse(data={"model_type": model_type, "instance": ModelInstanceResponse.model_validate(instance)})
