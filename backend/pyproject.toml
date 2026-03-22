@@ -37,7 +37,7 @@ dev = [
     "httpx>=0.26.0",
     "fakeredis>=2.21.0",
 ]
-test = ["pytest", "pytest-asyncio", "pytest-cov", "pytest-mock", "httpx", "fakeredis"]
+test = ["pytest", "pytest-asyncio", "pytest-cov", "pytest-html", "pytest-mock", "httpx", "fakeredis"]
 
 [build-system]
 requires = ["hatchling"]
