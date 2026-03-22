@@ -5,14 +5,15 @@ from sqlalchemy.orm import sessionmaker, Session
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.core.database import Base, get_db
+from app.core.database import get_db
+from app.models.base import BaseModel as Base  # Use BaseModel which has models registered
+from app.models import *  # noqa: F401, F403 - Import models to register them with Base
+from app.core.config import settings
 
-# Use SQLite for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-
+# Use the same DATABASE_URL as the app (supports PostgreSQL with JSONB)
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -70,3 +71,18 @@ def sample_character_data():
         "name": "主角",
         "description": "故事的主角",
     }
+
+
+@pytest.fixture
+def sample_script():
+    """Sample script text for AI testing."""
+    return """
+    第一幕：咖啡馆内，日，内
+    主角李明走进咖啡馆，看到他的老朋友王芳坐在角落。
+
+    李明：（惊讶）王芳？好久不见！
+    王芳：（微笑）李明！真巧，我刚到。
+
+    场景转换：咖啡馆外，日，外
+    李明和王芳走在街上，讨论着过去的事情。
+    """
