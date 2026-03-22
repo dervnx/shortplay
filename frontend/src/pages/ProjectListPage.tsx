@@ -123,7 +123,7 @@ export function ProjectListPage() {
             ))}
           </div>
 
-          {data && data.total_pages > 1 && (
+          {data && (data.total_pages || Math.ceil(data.total / data.page_size)) > 1 && (
             <div className="flex justify-center gap-2">
               <Button
                 variant="outline"
@@ -133,12 +133,12 @@ export function ProjectListPage() {
                 上一页
               </Button>
               <span className="flex items-center px-4">
-                {page} / {data.total_pages}
+                {page} / {data.total_pages || Math.ceil(data.total / data.page_size)}
               </span>
               <Button
                 variant="outline"
-                onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))}
-                disabled={page === data.total_pages}
+                onClick={() => setPage((p) => Math.min(data.total_pages || Math.ceil(data.total / data.page_size), p + 1))}
+                disabled={page === (data.total_pages || Math.ceil(data.total / data.page_size))}
               >
                 下一页
               </Button>

@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Plus, Play, Users, MapPin, Clapperboard } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
 import { projectApi, episodeApi, characterApi, sceneApi } from '@/api'
 
 const STEPS = [
