@@ -15,7 +15,7 @@ class ProjectBase(BaseModel):
 class ProjectCreate(ProjectBase):
     """Schema for creating a project."""
 
-    pass
+    status: Optional[int] = 0
 
 
 class ProjectUpdate(BaseModel):

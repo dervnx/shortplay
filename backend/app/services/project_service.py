@@ -21,7 +21,7 @@ class ProjectService:
             description=schema.description,
             cover=schema.cover,
             style_id=schema.style_id,
-            status=0,
+            status=schema.status if schema.status is not None else 0,
             progress=0,
         )
 
