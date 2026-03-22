@@ -11,12 +11,21 @@
 - 测试数据库：SQLite in-memory（现有 conftest.py）
 - 报告输出到 `/app/test-results/`
 
-### 2.2 依赖
-```dockerfile
-# backend/Dockerfile.test
-FROM python:3.11-slim
-RUN pip install pytest pytest-cov pytest-html pytest-asyncio
-# 其他测试依赖
+### 2.2 测试服务定义
+在 `backend/` 目录执行测试，挂载报告目录：
+```yaml
+# docker-compose.yml 添加
+services:
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: pytest --cov=app --html=test-results/report.html --cov-report=html
+    volumes:
+      - ./backend/test-results:/app/test-results
+    environment:
+      - DATABASE_URL=sqlite:///./test.db
+    working_dir: /app
 ```
 
 ## 3. 测试范围
@@ -32,6 +41,8 @@ RUN pip install pytest pytest-cov pytest-html pytest-asyncio
 - `test_project_service.py`
 - `test_episode_service.py`
 - `test_character_service.py`
+- `test_scene_service.py`
+- `test_storyboard_service.py`
 
 ### 3.3 AI 功能测试 (tests/ai/)
 - `test_entity_extractor.py` - FilmEntityExtractor 输出验证
@@ -44,8 +55,25 @@ RUN pip install pytest pytest-cov pytest-html pytest-asyncio
 |----------|--------|
 | API 功能 | 端点存在、参数验证、响应格式、错误码 |
 | Service 逻辑 | 业务规则、数据验证、边界条件 |
-| AI 输出 | 输出结构、必要字段、内容质量 |
+| AI 输出 | 输出结构、必要字段、JSON schema 验证 |
 | 端到端 | 全流程执行、数据一致性 |
+
+### 3.5 AI 输出质量验证
+
+**FilmEntityExtractor 验证：**
+```python
+assert result["characters"] is a list
+assert all("name" in char for char in result["characters"])
+assert result["scenes"] is a list
+assert all("name" in scene for scene in result["scenes"])
+```
+
+**FilmStoryboarder 验证：**
+```python
+assert result["shots"] is a list
+assert all("shot_number" in shot for shot in result["shots"])
+assert all("description" in shot for shot in result["shots"])
+```
 
 ## 4. 测试报告
 
@@ -97,12 +125,13 @@ docker compose run --rm backend pytest --cov=app --cov-report=html tests/
 
 ### 新增文件
 ```
-backend/Dockerfile.test           # 测试容器镜像
 backend/tests/ai/                # AI 功能测试目录
 backend/tests/ai/__init__.py
 backend/tests/ai/test_entity_extractor.py
 backend/tests/ai/test_storyboarder.py
 backend/tests/ai/test_end_to_end.py
+backend/tests/services/test_scene_service.py
+backend/tests/services/test_storyboard_service.py
 backend/test-results/             # 测试报告输出目录
 ```
 
