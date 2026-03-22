@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+*.egg-info/
+venv/
+.venv/
+env/
+*.egg
+
+# Node.js
+node_modules/
+.next/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# UV
+uv.lock
+
+# Media/生成文件
+*.mp4
+*.mov
+*.avi
+*.zip
+
+# Logs
+*.log
+logs/

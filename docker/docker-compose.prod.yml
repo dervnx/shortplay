@@ -1,0 +1,151 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: shortplay-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+  postgres:
+    image: postgres:15
+    container_name: shortplay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shortplay
+      POSTGRES_USER: shortplay
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-shortplay123}
+      TZ: Asia/Shanghai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shortplay -d shortplay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: shortplay-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mq:
+    image: rabbitmq:4.2-management
+    container_name: shortplay-mq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: shortplay
+      RABBITMQ_DEFAULT_PASS: ${MQ_PASSWORD:-shortplay123}
+      TZ: Asia/Shanghai
+    volumes:
+      - mq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: shortplay-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      TZ: Asia/Shanghai
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  es:
+    image: docker.1ms.run/library/elasticsearch:8.11.3
+    container_name: shortplay-es
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      TZ: Asia/Shanghai
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: shortplay-qdrant
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: shortplay-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://shortplay:${DB_PASSWORD:-shortplay123}@postgres:5432/shortplay
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://shortplay:${MQ_PASSWORD:-shortplay123}@mq:5672
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      ELASTICSEARCH_URL: http://es:9200
+      QDRANT_URL: qdrant:6333
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: shortplay-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: /api
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  mq_data:
+  minio_data:
+  es_data:
+  qdrant_data:
