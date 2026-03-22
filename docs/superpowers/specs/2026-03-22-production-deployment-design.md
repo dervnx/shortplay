@@ -8,6 +8,8 @@
 
 ### 目标：避免与主机现有服务冲突
 
+> **注意**：Elasticsearch 当前仍保留用于应用搜索功能（非向量搜索）。向量搜索已迁移至 PostgreSQL pgvector。后续如有需要可移除 ES。
+
 | 服务 | 原端口 (容器) | 新端口 (主机) | 说明 |
 |------|---------------|---------------|------|
 | PostgreSQL | 5432 | 5433 | 主机 5432 被占用 |
@@ -18,8 +20,8 @@
 | MinIO Console | 9001 | 9011 | |
 | Elasticsearch | 9200 | 9201 | 主机 9200 被 shortplay-es 占用 |
 | Elasticsearch Transport | 9300 | 9301 | |
-| Backend API | 8080 | 8081 | 内部网络通信，不暴露到主机 |
-| Frontend | 3000 | 3001 | 内部网络通信，不暴露到主机 |
+| Backend API | 8080 | - | 内部网络通信，不暴露到主机 |
+| Frontend | 3000 | - | 内部网络通信，不暴露到主机 |
 | Nginx | 80, 443 | 80, 443 | 保持不变，作为入口 |
 
 ### 实现方式
@@ -91,9 +93,24 @@ docker/
 
 ### 4.3 Nginx 配置片段
 ```nginx
-# 限流 zone
+# 限流 zone（三个层级：认证、普通、创作）
 limit_req_zone $binary_remote_addr zone=api_auth:10m rate=10r/m;
 limit_req_zone $binary_remote_addr zone=api_general:10m rate=100r/m;
+limit_req_zone $binary_remote_addr zone=api_create:10m rate=5r/m;
+
+# 应用限流（示例）
+location /api/auth/ {
+    limit_req zone=api_auth burst=5 nodelay;
+    proxy_pass http://backend:8080;
+}
+location /api/create/ {
+    limit_req zone=api_create burst=3 nodelay;
+    proxy_pass http://backend:8080;
+}
+location /api/ {
+    limit_req zone=api_general burst=20 nodelay;
+    proxy_pass http://backend:8080;
+}
 
 # Gzip
 gzip on;
@@ -184,15 +201,36 @@ gzip_min_length 1000;
   - external_service_calls_total（Counter）
   - circuit_breaker_state（Gauge）
 
-### 6.2 Grafana
-- **数据源**：Prometheus
-- **Dashboard**：
-  - API 请求概览（QPS, 延迟, 错误率）
-  - 服务健康状态
-  - Circuit Breaker 状态
-  - 外部服务调用统计
+### 6.2 Prometheus 配置（prometheus.yml）
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
 
-### 6.3 Docker Compose 集成
+scrape_configs:
+  - job_name: 'shortplay-backend'
+    static_configs:
+      - targets: ['backend:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  - job_name: 'shortplay-nginx'
+    static_configs:
+      - targets: ['nginx:9090']
+    scrape_interval: 30s
+```
+
+### 6.3 Grafana
+- **数据源**：Prometheus
+- **Dashboard**：API 请求概览、服务健康状态、Circuit Breaker 状态、外部服务调用统计
+- **Dashboard panels**：
+  1. **Request Rate**: `sum(rate(http_requests_total[5m])) by (method, path)`
+  2. **Error Rate**: `sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))`
+  3. **Latency P50/P95/P99**: `histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))`
+  4. **Circuit Breaker State**: `circuit_breaker_state{job="shortplay-backend"}`
+  5. **External Service Calls**: `sum(rate(external_service_calls_total[5m])) by (service, status)`
+
+### 6.4 Docker Compose 集成
 ```yaml
 prometheus:
   image: prom/prometheus:latest
@@ -247,23 +285,25 @@ SSL_KEY_PATH=         # SSL 私钥路径
 ```
 docker/
 ├── conf.d/
-│   ├── upstream.conf
-│   ├── backend.conf
-│   └── frontend.conf
-├── prometheus.yml
+│   ├── upstream.conf      # upstream 定义
+│   ├── backend.conf       # API 反向代理 + 限流
+│   └── frontend.conf      # 前端静态资源
+├── prometheus.yml          # Prometheus 抓取配置
 └── grafana/
     └── provisioning/
         └── dashboards/
-            └── api-dashboard.json
+            └── api-dashboard.json  # Grafana dashboard JSON
 
 backend/app/core/
 ├── exceptions.py          # 自定义异常类
 ├── middleware.py          # 请求日志、错误处理中间件
-├── logging.py            # 结构化日志配置
+├── logging.py             # 结构化日志配置
 └── circuit_breaker.py     # 熔断器配置
 
 backend/app/api/v1/
 └── middleware.py          # Rate limiting 中间件
+
+backend/app/metrics.py     # Prometheus 指标端点
 
 docs/superpowers/specs/
 └── 2026-03-22-production-deployment-design.md
