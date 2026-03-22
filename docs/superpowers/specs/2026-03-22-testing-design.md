@@ -8,13 +8,15 @@
 
 ### 2.1 容器内测试
 - 使用 `docker compose run --rm backend pytest` 执行
-- 测试数据库：SQLite in-memory（现有 conftest.py 配置 `sqlite:///./test.db`）
+- 测试数据库：使用 `tests/conftest.py` 现有配置（SQLite 文件数据库）
 - 报告输出到 `/app/test-results/`
 
 ### 2.2 测试执行命令
 ```bash
-# 在 backend 目录执行
+# 在 backend 目录执行（使用现有 backend 服务运行测试）
 docker compose run --rm backend pytest --cov=app --html=test-results/report.html --cov-report=html
+
+# docker-compose.yml 无需修改，使用 backend 服务直接执行
 ```
 
 ## 3. 测试范围
@@ -130,8 +132,8 @@ backend/test-results/             # 测试报告输出（不提交到 git）
 
 ### 修改文件
 ```
-backend/pyproject.toml            # 添加测试依赖
-docker-compose.yml               # 添加 test 服务和 volume
+backend/pyproject.toml            # 添加 pytest, pytest-cov, pytest-html, pytest-asyncio
+docker-compose.yml               # 无需修改（使用现有 backend 服务）
 ```
 
 ## 7. 验证清单
