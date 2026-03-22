@@ -13,6 +13,7 @@ from app.schemas.episode import (
 from app.services.episode_service import EpisodeService
 from app.services.character_service import CharacterService
 from app.services.scene_service import SceneService
+from app.core.skills_runtime import FilmEntityExtractor
 
 router = APIRouter()
 
@@ -89,27 +90,60 @@ def delete_episode(
 
 
 @router.post("/{episode_id}/extract", response_model=BaseResponse[dict])
-def extract_info(
+async def extract_info(
     episode_id: int,
     model_instance_id: Optional[int] = None,
     use_vector: bool = False,
     db: Session = Depends(get_db_session),
 ):
-    """Extract characters and scenes from episode content."""
-    # Placeholder for extraction logic - would call LLM service here
-    # This is a stub that returns empty results
+    """Extract characters and scenes from episode content using LLM.
+
+    This endpoint uses the FilmEntityExtractor skill to analyze the episode's
+    script text and extract structured information about characters and scenes.
+    """
     service = EpisodeService(db)
     episode = service.get(episode_id)
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
+    if not episode.content:
+        raise HTTPException(status_code=400, detail="Episode has no content to extract")
+
+    # Initialize the entity extractor
+    extractor = FilmEntityExtractor()
+
+    # Extract entities from script
+    result = await extractor.extract(episode.content)
+
+    # Bulk create characters and scenes
+    char_service = CharacterService(db)
+    scene_service = SceneService(db)
+
+    characters_data = result.get("characters", [])
+    scenes_data = result.get("scenes", [])
+
+    # Create characters
+    created_chars = char_service.bulk_create(
+        project_id=episode.project_id,
+        episode_id=episode_id,
+        characters=characters_data,
+    )
+
+    # Create scenes
+    created_scenes = scene_service.bulk_create(
+        project_id=episode.project_id,
+        episode_id=episode_id,
+        scenes=scenes_data,
+    )
+
     # Update episode step
     service.update_step(episode_id, current_step=1)
 
     return BaseResponse(data={
-        "characters": [],
-        "scenes": [],
-        "message": "Extraction completed (stub)",
+        "characters": [{"id": c.id, "name": c.name, "description": getattr(c, "description", "")} for c in created_chars],
+        "scenes": [{"id": s.id, "name": s.name, "description": getattr(s, "description", "")} for s in created_scenes],
+        "message": f"Extraction completed. {len(created_chars)} characters, {len(created_scenes)} scenes.",
+        "raw_result": result.get("raw_output", ""),
     })
 
 

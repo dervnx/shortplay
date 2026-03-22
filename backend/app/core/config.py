@@ -1,9 +1,15 @@
 import os
 from functools import lru_cache
-from pydantic_settings import BaseSettings
+from typing import List
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+    )
+
     # Application
     APP_NAME: str = "ShortPlay"
     DEBUG: bool = True
@@ -26,17 +32,24 @@ class Settings(BaseSettings):
     # Elasticsearch
     ELASTICSEARCH_URL: str = "http://localhost:9200"
 
+    # MiniMax LLM
+    MINIMAX_API_KEY: str = ""
+    MINIMAX_API_BASE: str = "https://api.minimax.chat/v1"
+    MINIMAX_MODEL: str = "MiniMax-Text-01"
+    MINIMAX_IMAGE_MODEL: str = "MiniMax-Image-01"
+
     # JWT
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
-    # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    # CORS - comma-separated string, parsed manually
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Parse CORS_ORIGINS string into a list."""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
 
 @lru_cache()
