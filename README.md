@@ -89,11 +89,10 @@ npm run dev
 |------|------|
 | 后端 | FastAPI, SQLAlchemy, Pydantic |
 | 前端 | React 18, TypeScript, TailwindCSS |
-| 数据库 | PostgreSQL 15 |
+| 数据库 | PostgreSQL 16 + pgvector |
 | 缓存 | Redis 7 |
 | 消息队列 | RabbitMQ 4.x |
 | 搜索引擎 | Elasticsearch 8.11 |
-| 向量数据库 | Qdrant |
 | 对象存储 | MinIO |
 
 ## 运行测试
