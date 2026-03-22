@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.database import get_db
+from app.api.v1.deps import get_db_session
 from app.models.base import BaseModel as Base  # Use BaseModel which has models registered
 from app.models import *  # noqa: F401, F403 - Import models to register them with Base
 from app.core.config import settings
@@ -39,7 +40,7 @@ def client(db: Session) -> Generator[TestClient, None, None]:
         finally:
             pass
 
-    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db_session] = override_get_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
