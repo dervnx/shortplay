@@ -13,13 +13,14 @@ services:
       - backend
 
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg16
     container_name: shortplay-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: shortplay
       POSTGRES_USER: shortplay
       POSTGRES_PASSWORD: ${DB_PASSWORD:-shortplay123}
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=vector"
       TZ: Asia/Shanghai
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -91,15 +92,6 @@ services:
       timeout: 5s
       retries: 10
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: shortplay-qdrant
-    restart: unless-stopped
-    environment:
-      TZ: Asia/Shanghai
-    volumes:
-      - qdrant_data:/qdrant/storage
-
   backend:
     build:
       context: ../backend
@@ -114,7 +106,6 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       ELASTICSEARCH_URL: http://es:9200
-      QDRANT_URL: qdrant:6333
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
@@ -148,4 +139,3 @@ volumes:
   mq_data:
   minio_data:
   es_data:
-  qdrant_data:

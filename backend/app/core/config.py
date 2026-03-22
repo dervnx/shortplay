@@ -26,11 +26,6 @@ class Settings(BaseSettings):
     # Elasticsearch
     ELASTICSEARCH_URL: str = "http://localhost:9200"
 
-    # Qdrant
-    QDRANT_URL: str = "localhost:6333"
-    QDRANT_COLLECTION: str = "shortplay_content"
-    QDRANT_DIMENSION: int = 384
-
     # JWT
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"

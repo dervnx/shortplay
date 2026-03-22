@@ -20,7 +20,7 @@
 | 缓存 | Redis 7 |
 | 消息队列 | RabbitMQ 4.x |
 | 搜索引擎 | Elasticsearch 8.11 (IK+pinyin) |
-| 向量数据库 | Qdrant |
+| 向量数据库 | PostgreSQL pgvector |
 | 对象存储 | MinIO |
 | 容器化 | Docker + Docker Compose |
 

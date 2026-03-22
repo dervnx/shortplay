@@ -1,12 +1,13 @@
 services:
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg16
     container_name: shortplay-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: shortplay
       POSTGRES_USER: shortplay
       POSTGRES_PASSWORD: ${DB_PASSWORD:-shortplay123}
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=vector"
       TZ: Asia/Shanghai
     ports:
       - "5432:5432"
@@ -89,21 +90,8 @@ services:
       timeout: 5s
       retries: 10
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: shortplay-qdrant
-    restart: unless-stopped
-    environment:
-      TZ: Asia/Shanghai
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-    volumes:
-      - qdrant_data:/qdrant/storage
-
 volumes:
   postgres_data:
   redis_data:
   minio_data:
   es_data:
-  qdrant_data:
