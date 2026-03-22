@@ -1,10 +1,13 @@
 FROM node:20-alpine AS base
 
+# Use Chinese npm mirror
+RUN npm config set registry https://registry.npmmirror.com
+
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Development image
 FROM base AS development
