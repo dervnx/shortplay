@@ -8,24 +8,13 @@
 
 ### 2.1 容器内测试
 - 使用 `docker compose run --rm backend pytest` 执行
-- 测试数据库：SQLite in-memory（现有 conftest.py）
+- 测试数据库：SQLite in-memory（现有 conftest.py 配置 `sqlite:///./test.db`）
 - 报告输出到 `/app/test-results/`
 
-### 2.2 测试服务定义
-在 `backend/` 目录执行测试，挂载报告目录：
-```yaml
-# docker-compose.yml 添加
-services:
-  backend-test:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: pytest --cov=app --html=test-results/report.html --cov-report=html
-    volumes:
-      - ./backend/test-results:/app/test-results
-    environment:
-      - DATABASE_URL=sqlite:///./test.db
-    working_dir: /app
+### 2.2 测试执行命令
+```bash
+# 在 backend 目录执行
+docker compose run --rm backend pytest --cov=app --html=test-results/report.html --cov-report=html
 ```
 
 ## 3. 测试范围
@@ -62,15 +51,15 @@ services:
 
 **FilmEntityExtractor 验证：**
 ```python
-assert result["characters"] is a list
+assert isinstance(result["characters"], list)
 assert all("name" in char for char in result["characters"])
-assert result["scenes"] is a list
+assert isinstance(result["scenes"], list)
 assert all("name" in scene for scene in result["scenes"])
 ```
 
 **FilmStoryboarder 验证：**
 ```python
-assert result["shots"] is a list
+assert isinstance(result["shots"], list)
 assert all("shot_number" in shot for shot in result["shots"])
 assert all("description" in shot for shot in result["shots"])
 ```
@@ -132,7 +121,11 @@ backend/tests/ai/test_storyboarder.py
 backend/tests/ai/test_end_to_end.py
 backend/tests/services/test_scene_service.py
 backend/tests/services/test_storyboard_service.py
-backend/test-results/             # 测试报告输出目录
+```
+
+### gitignore 添加
+```
+backend/test-results/             # 测试报告输出（不提交到 git）
 ```
 
 ### 修改文件
